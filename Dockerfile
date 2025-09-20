@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Production stage
 FROM python:3.11-slim
@@ -23,8 +23,7 @@ WORKDIR /app
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    SWE_EPHE_PATH=/app/ephe \
-    PATH=/root/.local/bin:$PATH
+    SWE_EPHE_PATH=/app/ephe
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -32,15 +31,18 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder stage
-COPY --from=builder /root/.local /root/.local
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Copy application code
 COPY app/ ./app/
 COPY ephe/ ./ephe/
+RUN chown -R appuser:appuser /app
 
-# Create non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser && \
-    chown -R appuser:appuser /app
+# Switch to non-root user
 USER appuser
 
 # Expose port
