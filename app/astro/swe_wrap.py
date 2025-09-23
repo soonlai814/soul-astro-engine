@@ -16,6 +16,8 @@ PLANETS = {
     "Uranus": swe.URANUS,
     "Neptune":swe.NEPTUNE,
     "Pluto":  swe.PLUTO,
+    "North Node": swe.TRUE_NODE,
+    "South Node": swe.TRUE_NODE,  # Will be calculated as North Node + 180°
 }
 
 _initialised = False
@@ -40,11 +42,24 @@ def planet_longitudes(dt_utc: datetime) -> Dict[str, float]:
     out: Dict[str, float] = {}
 
     for name, pid in PLANETS.items():
-        xx, retflag = swe.calc_ut(jd, pid, flags)  # <- returns (xx, retflag)
-        if retflag < 0 or xx is None or len(xx) < 1:
-            raise RuntimeError(f"swe.calc_ut failed for {name} (retflag={retflag})")
-        lon = float(xx[0])  # ecliptic longitude in degrees, already 0..360
-        out[name] = lon
+        if name == "South Node":
+            # South Node is North Node + 180°
+            if "North Node" in out:
+                out[name] = normalize_deg(out["North Node"] + 180.0)
+            else:
+                # Calculate North Node first
+                xx, retflag = swe.calc_ut(jd, swe.TRUE_NODE, flags)
+                if retflag < 0 or xx is None or len(xx) < 1:
+                    raise RuntimeError(f"swe.calc_ut failed for North Node (retflag={retflag})")
+                north_node_lon = float(xx[0])
+                out["North Node"] = north_node_lon
+                out[name] = normalize_deg(north_node_lon + 180.0)
+        else:
+            xx, retflag = swe.calc_ut(jd, pid, flags)  # <- returns (xx, retflag)
+            if retflag < 0 or xx is None or len(xx) < 1:
+                raise RuntimeError(f"swe.calc_ut failed for {name} (retflag={retflag})")
+            lon = float(xx[0])  # ecliptic longitude in degrees, already 0..360
+            out[name] = lon
 
     return out
 

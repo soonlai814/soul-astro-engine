@@ -10,6 +10,7 @@ from app.astro.composite import composite_longitudes
 from app.astro.swe_wrap import planet_longitudes, composite_angles
 from app.astro.aspects import detect_aspects
 from app.astro.rank_group import group_and_rank
+from app.astro.composite_engine import analyze_composite
 
 # Load .env file from the project root directory
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
@@ -154,23 +155,23 @@ def post_top_aspects_composite(body: CompositeBody):
         a = _parse_utc(body.parent.datetime_utc)
         b = _parse_utc(body.child.datetime_utc)
 
+        # Compute composite midpoints
         comp = composite_longitudes(a, b)
 
+        # Compute composite angles if coordinates provided
         comp_ang = None
         if (body.parent.lat is not None and body.parent.lon is not None and
             body.child.lat  is not None and body.child.lon  is not None):
             comp_ang = composite_angles(a, body.parent.lat, body.parent.lon,
                                         b, body.child.lat,  body.child.lon)
 
-        hits = detect_aspects(comp)
-        clusters = group_and_rank(hits, planets_pos=comp, comp_angles=comp_ang)
+        # Run comprehensive analysis
+        result = analyze_composite(comp, comp_ang)
+        
+        # Add additional metadata
+        result["meta"]["src"] = "Swiss Ephemeris"
+        result["meta"]["version"] = APP_VERSION
 
-        return {
-            "count": len(clusters),
-            "items": clusters,
-            "composite": comp,
-                "composite_angles": comp_ang,
-                "meta": {"src": "Swiss Ephemeris", "version": APP_VERSION}
-            }
+        return result
     except Exception as e:
         raise HTTPException(400, f"Error processing request: {e}")

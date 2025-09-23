@@ -1,183 +1,265 @@
 # Soul Astro Engine
 
-A sophisticated astrological calculation engine built with FastAPI that provides planetary calculations, aspect detection, composite chart generation, and advanced aspect grouping with intelligent scoring algorithms.
+A comprehensive Python-based astrological analysis engine that performs composite chart analysis. The engine detects aspects, stelliums, angle contacts, and sign themes, then ranks them by significance to provide structured insights for relationship analysis.
 
 ## Features
 
-### 🌟 Core Capabilities
-- **Swiss Ephemeris Integration**: High-precision planetary calculations using the Swiss Ephemeris library
-- **Aspect Detection**: Identifies major astrological aspects (conjunction, square, trine, opposition) with configurable orbs
-- **Composite Charts**: Generates composite charts from two birth charts using midpoint calculations
-- **Advanced Grouping**: Groups and ranks aspects with sophisticated scoring algorithms
-- **Angular Analysis**: Calculates and analyzes angular houses (AC, DC, MC, IC) and their composite midpoints
-- **REST API**: FastAPI-based web service with comprehensive endpoints
+- **Comprehensive Aspect Detection**: Identifies planetary aspects with proper orb rules (5° for Sun/Moon, 3° for others)
+- **Stellium Detection**: Finds clusters of 3+ planets within 8° span
+- **Angle Contact Analysis**: Detects planets near composite angles (AC/DC/MC/IC)
+- **Sign Blend Synthesis**: Identifies dominant sign themes with weighted analysis
+- **Significance Scoring**: Complex scoring system with tightness multipliers and bonuses
+- **RESTful API**: FastAPI-based web service with comprehensive endpoints
+- **Swiss Ephemeris Integration**: High-precision astronomical calculations
+- **Comprehensive Testing**: Full test coverage with edge case validation
 
-### 🎯 Intelligent Scoring System
-- **Hardness Weights**: Different weights for aspect types (conjunction: 2.0, opposition: 1.8, square: 1.6, trine: 1.2)
-- **Orb Scoring**: Dynamic orb calculations based on planetary pairs (5° for Sun/Moon, 3° for others)
-- **Emotional Bonuses**: Additional scoring for Sun, Moon, and Mars aspects
-- **Angularity Boost**: Enhanced scoring for planets near angular houses (±5°)
-- **Group Bonuses**: Clustering bonuses for stelliums and grouped aspects
-- **Stellium Detection**: Identifies when 3+ planets cluster in the same aspect pattern
+## Quick Start
 
-### 📊 Advanced Grouping
-- **Band Clustering**: Groups aspects within ±3° separation bands
-- **Theme Classification**: Categorizes clusters by astrological themes (fusion, intensity, friction, ease)
-- **Priority Ranking**: Sophisticated ranking system considering hardness, orbs, and emotional significance
-- **Anchor Selection**: Intelligent planet prioritization for cluster labeling
+### Installation
 
-## API Endpoints
-
-### Health & Info
-- `GET /health` - Service health check
-- `GET /about` - Service information and configuration
-
-### Core Calculations
-- `POST /composite` - Generate composite chart from two birth charts
-- `POST /aspects` - Detect aspects from planetary longitudes
-- `POST /top-aspects` - Get grouped and ranked aspects with advanced scoring
-- `POST /top-aspects/composite` - Composite chart with top aspects analysis
-
-## Installation and Setup
-
-### Prerequisites
-- Python 3.11+
-- Swiss Ephemeris data files (included in `ephe/` directory)
-
-### Environment Setup
+1. **Clone the repository:**
 ```bash
-# Clone the repository
 git clone <repository-url>
 cd soul-astro-engine
-
-# Setup virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env to set SWE_EPHE_PATH to the ephe directory path
 ```
 
-### Running the Service
+2. **Create virtual environment:**
 ```bash
-# Start the API server
-python -m uvicorn app.main:app --reload --port 8000
-
-# Or using the virtual environment's uvicorn
-.venv/bin/uvicorn app.main:app --reload --port 8000
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-The API will be available at `http://localhost:8000`
+3. **Install dependencies:**
+```bash
+pip install -r requirements.txt
+```
 
-## Usage Examples
+4. **Set up environment:**
+```bash
+echo "SWE_EPHE_PATH=/path/to/swiss/ephemeris/data" > .env
+echo "APP_VERSION=0.1.0" >> .env
+```
 
-### Basic Composite Chart
-```python
-import requests
+5. **Download Swiss Ephemeris data:**
+   - Download from [Swiss Ephemeris website](https://www.astro.com/swisseph/)
+   - Extract to a directory and update `SWE_EPHE_PATH` in `.env`
 
-# Create a composite chart
-response = requests.post("http://localhost:8000/composite", json={
+### Running the Application
+
+```bash
+# Development server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Production server
+gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+```
+
+### API Usage
+
+#### Basic Composite Analysis
+
+```bash
+curl -X POST "http://localhost:8000/top-aspects/composite" \
+  -H "Content-Type: application/json" \
+  -d '{
     "parent": {
-        "datetime_utc": "1990-01-01T12:00:00Z",
-        "lat": 40.7128,
-        "lon": -74.0060
+      "datetime_utc": "1990-01-01T12:00:00Z",
+      "lat": 40.7128,
+      "lon": -74.0060
     },
     "child": {
-        "datetime_utc": "1995-06-15T18:30:00Z",
-        "lat": 34.0522,
-        "lon": -118.2437
+      "datetime_utc": "1995-06-15T18:30:00Z",
+      "lat": 34.0522,
+      "lon": -118.2437
     }
-})
+  }'
 ```
 
-### Aspect Analysis
-```python
-# Analyze aspects from planetary positions
-response = requests.post("http://localhost:8000/aspects", json={
-    "longitudes": {
-        "Sun": 120.5,
-        "Moon": 45.2,
-        "Mars": 300.8,
-        "Venus": 90.1
+#### Response Format
+
+```json
+{
+  "placements": {
+    "stelliums": [
+      {
+        "sign": "Scorpio",
+        "planets": ["Sun", "Mercury", "Venus"],
+        "span_deg": 7.5
+      }
+    ],
+    "angles": [
+      {
+        "angle": "MC",
+        "contact": "Pluto conjunct MC",
+        "orb_deg": 1.8,
+        "planet": "Pluto",
+        "planet_deg": 235.623,
+        "angle_deg": 237.423
+      }
+    ],
+    "aspects": [
+      {
+        "a": "Sun",
+        "b": "Mercury",
+        "type": "conjunction",
+        "orb_deg": 4.99,
+        "a_deg": 185.290,
+        "b_deg": 180.290
+      }
+    ],
+    "sign_themes": [
+      {
+        "sign": "Scorpio",
+        "keywords": ["depth", "loyalty", "intensity"]
+      }
+    ],
+    "selected_themes": [
+      {
+        "source": "aspect",
+        "label": "Sun conjunction Mercury",
+        "degrees": "5° Scorpio / 0° Scorpio",
+        "type": "conjunction",
+        "orb_deg": 4.99,
+        "significance": 4.388,
+        "payload_ref": {
+          "a": "Sun",
+          "b": "Mercury"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "rules": {
+      "orb_sun_moon": 5.0,
+      "orb_others": 3.0,
+      "stellium_span": 8.0
     },
-    "composite_angles": {
-        "AC": 15.0,
-        "DC": 195.0,
-        "MC": 285.0,
-        "IC": 105.0
-    }
-})
+    "computed_at": "2024-01-01T12:00:00Z",
+    "src": "Swiss Ephemeris",
+    "version": "0.1.0"
+  }
+}
 ```
-
-### Top Aspects with Grouping
-```python
-# Get ranked and grouped aspects
-response = requests.post("http://localhost:8000/top-aspects", json={
-    "longitudes": {
-        "Sun": 120.5,
-        "Moon": 45.2,
-        "Mars": 300.8,
-        "Venus": 90.1,
-        "Saturn": 180.3
-    }
-})
-```
-
-## Project Structure
-
-```
-soul-astro-engine/
-├── app/
-│   ├── astro/           # Astrological calculation modules
-│   │   ├── aspects.py   # Aspect detection and analysis
-│   │   ├── composite.py # Composite chart calculations
-│   │   ├── rank_group.py # Advanced grouping and ranking
-│   │   └── swe_wrap.py  # Swiss Ephemeris wrapper
-│   ├── core/            # Core utility functions
-│   │   └── angles.py    # Angular calculations and utilities
-│   └── main.py          # FastAPI application and endpoints
-├── ephe/                # Swiss Ephemeris data files
-├── tests/               # Test suite
-├── requirements.txt     # Python dependencies
-└── README.md           # This file
-```
-
-## Dependencies
-
-- **FastAPI**: Modern web framework for building APIs
-- **Pydantic**: Data validation and settings management
-- **Swiss Ephemeris**: High-precision astronomical calculations
-- **Uvicorn**: ASGI server for FastAPI
-- **Python-dotenv**: Environment variable management
-- **Pytest**: Testing framework
 
 ## Testing
 
 ```bash
 # Run all tests
-pytest
+python -m pytest
 
 # Run with verbose output
-pytest -v
+python -m pytest -v
 
 # Run specific test file
-pytest tests/test_aspects.py
+python -m pytest tests/test_engine_spec.py
+
+# Run with coverage
+python -m pytest --cov=app --cov-report=html
 ```
+
+## Documentation
+
+- **[Architecture Guide](ARCHITECTURE.md)** - System architecture and component overview
+- **[Algorithm Documentation](ALGORITHMS.md)** - Detailed algorithm explanations and formulas
+- **[API Specification](API_SPECIFICATION.md)** - Complete API reference
+- **[Development Guide](DEVELOPMENT_GUIDE.md)** - Development setup and guidelines
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/about` | GET | Service information |
+| `/composite` | POST | Basic composite calculation |
+| `/aspects` | POST | Aspect analysis |
+| `/top-aspects` | POST | Legacy grouped aspects |
+| `/top-aspects/composite` | POST | **Main endpoint** - Comprehensive analysis |
+
+## Algorithm Overview
+
+### 1. Aspect Detection
+- Calculates angular separation between all planet pairs
+- Applies orb rules: 5° for Sun/Moon, 3° for others
+- Detects conjunction, square, trine, and opposition aspects
+- Handles 0-360° wraparound correctly
+
+### 2. Stellium Detection
+- Uses sliding window approach to find 3+ planets within 8°
+- Handles 0-360° wraparound for accurate span calculation
+- Determines modal sign for stellium labeling
+- Prevents duplicate stellium detection
+
+### 3. Angle Contact Detection
+- Detects planets within 3° of composite angles (AC/DC/MC/IC)
+- Creates descriptive contact labels
+- Sorts by orb tightness
+
+### 4. Sign Blend Synthesis
+- Weights planets (core bodies = 2.0x, others = 1.0x)
+- Identifies two most dominant signs
+- Applies thresholds for meaningful dominance
+- Returns sign themes with keywords
+
+### 5. Significance Scoring
+- Complex formula: `base × tightness + core_bonus + angle_bonus + stellium_bonus`
+- Base scores: 2.0 (conj/opp), 1.4 (square), 1.2 (trine), 1.8 (stellium), 1.6 (angle)
+- Tightness multiplier: 1.0 + max(0, (orb_limit - orb) / orb_limit)
+- Bonuses: +0.3 (core bodies), +0.2 (angular), +0.2 (stellium)
+
+### 6. Theme Ranking
+- Ranks by significance score (descending)
+- Deduplicates overlapping themes
+- Returns top 5 themes
+- Priority: conjunction > opposition > stellium > angle > square > trine
 
 ## Configuration
 
-The service requires the following environment variables:
+### Environment Variables
 
-- `SWE_EPHE_PATH`: Path to Swiss Ephemeris data files (defaults to `./ephe`)
-- `APP_VERSION`: Application version (defaults to "0.1.0")
+- `SWE_EPHE_PATH`: Path to Swiss Ephemeris data files
+- `APP_VERSION`: Application version string
 
-## License
+### Constants
 
-AGPL-3.0
+All astrological constants are centralized in `app/core/constants.py`:
+
+```python
+ORB_SUN_MOON = 5.0          # Sun/Moon aspect orb
+ORB_OTHERS = 3.0            # Other aspect orb
+STELLIUM_SPAN_DEG = 8.0     # Stellium detection span
+ANGLE_ORB_DEG = 3.0         # Angle contact tolerance
+CORE_BODIES = {...}         # Core bodies for scoring
+PRIORITY = [...]            # Theme priority order
+```
+
+## Dependencies
+
+### Core Dependencies
+- `swisseph`: Swiss Ephemeris astronomical calculations
+- `fastapi`: Web framework
+- `pydantic`: Data validation
+- `python-dotenv`: Environment configuration
+
+### Development Dependencies
+- `pytest`: Testing framework
+- `pytest-asyncio`: Async testing support
+
+## Performance
+
+### Time Complexity
+- Aspect detection: O(n²) where n = number of planets
+- Stellium detection: O(n²) with sliding window optimization
+- Overall: O(n²) due to aspect detection
+
+### Space Complexity
+- O(n²) worst case for aspect storage
+- O(n) average case for other components
+
+### Optimization Strategies
+- Sliding window for stellium detection
+- Early returns in validation
+- Efficient sorting algorithms
+- Minimal object creation
 
 ## Contributing
 
@@ -185,8 +267,21 @@ AGPL-3.0
 2. Create a feature branch
 3. Make your changes
 4. Add tests for new functionality
-5. Submit a pull request
+5. Ensure all tests pass
+6. Submit a pull request
+
+## License
+
+AGPL-3.0 - See [LICENSE](LICENSE) file for details.
 
 ## Support
 
-For issues and questions, please open an issue on the repository.
+For questions, issues, or contributions, please:
+1. Check the documentation
+2. Search existing issues
+3. Create a new issue with detailed information
+4. Contact the development team
+
+---
+
+**Soul Astro Engine** - Comprehensive astrological analysis for relationship insights.
