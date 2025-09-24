@@ -135,7 +135,10 @@ def group_and_rank(hits: List[AspectHit],
         cl.merged_score = round(mean(cl.member_scores) + cl.group_bonus, 6)
 
         # bucket: stellium/angle between square & trine
-        if cl.stellium or cl.angle_related:
+        # Only classify as stellium_angle if it's purely a stellium (not an aspect cluster)
+        if cl.stellium and cl.primary_type not in ['conjunction', 'opposition', 'square', 'trine']:
+            cl.bucket = "stellium_angle"
+        elif cl.angle_related and not cl.stellium:
             cl.bucket = "stellium_angle"
         else:
             cl.bucket = cl.primary_type

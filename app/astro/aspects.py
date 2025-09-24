@@ -1,16 +1,10 @@
 from typing import Dict, List, Tuple
 from dataclasses import dataclass
 from app.core.angles import normalize_deg
+from app.core.constants import ASPECTS, ORB_SUN_MOON, ORB_OTHERS
 
-ASPECTS = [
-    ("conjunction", 0.0),
-    ("square", 90.0),
-    ("trine", 120.0),
-    ("opposition", 180.0),
-]
-
-SUN_MOON_ORB = 5.0
-OTHER_ORB = 3.0
+# Convert ASPECTS dict to list format for compatibility
+ASPECTS_LIST = [(name, angle) for angle, name in ASPECTS.items()]
 
 @dataclass
 class AspectHit:
@@ -27,8 +21,8 @@ def _sep_deg(a: float, b: float) -> float:
 
 def _orb_for_pair(p1: str, p2: str) -> float:
     if "Sun" in (p1, p2) or "Moon" in (p1, p2):
-        return SUN_MOON_ORB
-    return OTHER_ORB
+        return ORB_SUN_MOON
+    return ORB_OTHERS
 
 def detect_aspects(longitudes: Dict[str, float]) -> List[AspectHit]:
     keys = list(longitudes.keys())
@@ -39,7 +33,7 @@ def detect_aspects(longitudes: Dict[str, float]) -> List[AspectHit]:
             a1, a2 = longitudes[p1], longitudes[p2]
             sep = _sep_deg(a1, a2)     # 0..180
             orb_max = _orb_for_pair(p1, p2)
-            for name, target in ASPECTS:
+            for name, target in ASPECTS_LIST:
                 diff = abs(sep - target)
                 if diff <= orb_max:
                     hits.append(AspectHit(

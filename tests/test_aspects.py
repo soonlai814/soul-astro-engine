@@ -10,4 +10,4 @@ def test_square_detect():
     longs = {"Mars": 10.0, "Saturn": 100.5}
     hits = detect_aspects(longs)
     found = [h for h in hits if h.type=="square" and set(h.planets)=={"Mars","Saturn"}]
-    assert found and found[0].orb <= 1.0
+    assert found and found[0].diff <= 1.0
