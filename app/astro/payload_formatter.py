@@ -7,7 +7,7 @@ from app.astro.aspects import AspectHit
 from app.astro.angle_contacts import AngleContact
 from app.astro.stellium_detection import Stellium
 from app.astro.sign_blend import SignTheme
-from app.astro.significance_scoring import ThemeUnit, AspectTheme, StelliumTheme, AngleTheme, SignBlendTheme
+from app.astro.significance_scoring import ThemeUnit, AspectTheme, StelliumTheme, AngleTheme, SignBlendTheme, PatternTheme
 from app.core.constants import PRIORITY
 
 
@@ -28,7 +28,8 @@ def format_placements_payload(aspects: List[AspectHit],
                              stelliums: List[Stellium],
                              sign_themes: List[SignTheme],
                              selected_themes: List[ThemeUnit],
-                             planet_degrees: Dict[str, float] = None) -> Dict[str, Any]:
+                             planet_degrees: Dict[str, float] = None,
+                             special_patterns: List = None) -> Dict[str, Any]:
     """
     Format the strict placements payload structure.
     
@@ -38,6 +39,8 @@ def format_placements_payload(aspects: List[AspectHit],
         stelliums: List of detected stelliums
         sign_themes: List of sign blend themes
         selected_themes: List of top-ranked theme units
+        planet_degrees: Dict of planet names to degrees
+        special_patterns: List of detected special patterns
         
     Returns:
         Formatted placements payload
@@ -85,41 +88,115 @@ def format_placements_payload(aspects: List[AspectHit],
             "keywords": theme.keywords
         })
     
+    # Format special patterns
+    formatted_patterns = []
+    if special_patterns:
+        for pattern in special_patterns:
+            formatted_patterns.append({
+                "pattern_type": pattern.pattern_type,
+                "planets": pattern.planets,
+                "orb_deg": pattern.orb_deg
+            })
+    
     # Format selected themes
     formatted_selected_themes = []
     for theme in selected_themes:
-        if isinstance(theme, AspectTheme):
+        if isinstance(theme, PatternTheme):
+            # Special pattern formatting with special_feature flag
+            pattern_names = {
+                'grand_cross': 'Grand Cross',
+                'grand_trine': 'Grand Trine', 
+                't_square': 'T-Square',
+                'mystic_rectangle': 'Mystic Rectangle'
+            }
+            label = f"{pattern_names.get(theme.type, theme.type)} ({', '.join(theme.planets)})"
+            degrees = f"{theme.orb_deg}° orb"
+            payload_ref = {"planets": theme.planets, "type": theme.type}
+            
+            formatted_selected_themes.append({
+                "source": theme.source,
+                "label": label,
+                "degrees": degrees,
+                "type": theme.type,
+                "orb_deg": theme.orb_deg,
+                "significance": theme.significance,
+                "special_feature": True,
+                "group_rank": 0,
+                "payload_ref": payload_ref
+            })
+        elif isinstance(theme, AspectTheme):
             label = f"{theme.a} {theme.type} {theme.b}"
             degrees = f"{_get_sign_and_degree(theme.a_deg)} / {_get_sign_and_degree(theme.b_deg)}"
             payload_ref = {"a": theme.a, "b": theme.b}
+            
+            formatted_selected_themes.append({
+                "source": theme.source,
+                "label": label,
+                "degrees": degrees,
+                "type": theme.type,
+                "orb_deg": theme.orb_deg,
+                "significance": theme.significance,
+                "payload_ref": payload_ref
+            })
         elif isinstance(theme, StelliumTheme):
             label = f"Stellium in {theme.sign}"
             degrees = f"{theme.span_deg}° span"
             payload_ref = {"planets": theme.planets, "sign": theme.sign}
+            
+            formatted_selected_themes.append({
+                "source": theme.source,
+                "label": label,
+                "degrees": degrees,
+                "type": theme.type,
+                "orb_deg": theme.orb_deg,
+                "significance": theme.significance,
+                "payload_ref": payload_ref
+            })
         elif isinstance(theme, AngleTheme):
             label = f"{theme.planet} conjunct {theme.angle}"
             degrees = _get_sign_and_degree(theme.planet_deg)
             payload_ref = {"planet": theme.planet, "angle": theme.angle}
+            
+            formatted_selected_themes.append({
+                "source": theme.source,
+                "label": label,
+                "degrees": degrees,
+                "type": theme.type,
+                "orb_deg": theme.orb_deg,
+                "significance": theme.significance,
+                "payload_ref": payload_ref
+            })
         elif isinstance(theme, SignBlendTheme):
             label = f"{theme.sign} blend"
             degrees = theme.sign
             payload_ref = {"sign": theme.sign, "keywords": theme.keywords}
+            
+            formatted_selected_themes.append({
+                "source": theme.source,
+                "label": label,
+                "degrees": degrees,
+                "type": theme.type,
+                "orb_deg": theme.orb_deg,
+                "significance": theme.significance,
+                "payload_ref": payload_ref
+            })
         else:
             label = f"{theme.source} {theme.type}"
             degrees = ""
             payload_ref = {}
-        
-        formatted_selected_themes.append({
-            "source": theme.source,
-            "label": label,
-            "degrees": degrees,
-            "type": theme.type,
-            "orb_deg": theme.orb_deg,
-            "significance": theme.significance,
-            "payload_ref": payload_ref
-        })
+            
+            formatted_selected_themes.append({
+                "source": theme.source,
+                "label": label,
+                "degrees": degrees,
+                "type": theme.type,
+                "orb_deg": theme.orb_deg,
+                "significance": theme.significance,
+                "payload_ref": payload_ref
+            })
     
     return {
+        "patterns": formatted_patterns,
         "stelliums": formatted_stelliums,
         "angles": formatted_angles,
         "aspects": formatted_aspects,

@@ -55,8 +55,18 @@ class SignBlendTheme:
     significance: float = 0.0
 
 
+@dataclass
+class PatternTheme:
+    """Special pattern theme unit (Grand Cross, Grand Trine, T-Square, Mystic Rectangle)."""
+    source: str  # 'pattern'
+    type: str  # 'grand_cross', 'grand_trine', 't_square', 'mystic_rectangle'
+    orb_deg: float
+    planets: List[str]
+    significance: float = 0.0
+
+
 # Union type for all theme units
-ThemeUnit = Union[AspectTheme, StelliumTheme, AngleTheme, SignBlendTheme]
+ThemeUnit = Union[AspectTheme, StelliumTheme, AngleTheme, SignBlendTheme, PatternTheme]
 
 
 def _get_base_score(theme_type: str) -> float:
@@ -68,7 +78,12 @@ def _get_base_score(theme_type: str) -> float:
         'trine': 1.2,
         'stellium': 1.8,
         'angle': 1.6,
-        'sign_blend': 1.0
+        'sign_blend': 1.0,
+        # Special patterns get highest base scores
+        'grand_cross': 3.0,
+        'grand_trine': 2.8,
+        't_square': 2.6,
+        'mystic_rectangle': 2.4
     }
     return base_scores.get(theme_type, 1.0)
 
@@ -153,6 +168,8 @@ def calculate_significance(theme: ThemeUnit,
         planets = [theme.planet]
     elif isinstance(theme, SignBlendTheme):
         planets = []  # Sign blend doesn't have specific planets
+    elif isinstance(theme, PatternTheme):
+        planets = theme.planets
     
     core_bonus = _get_core_bonus(planets)
     angle_bonus = _get_angle_bonus(theme, angle_contacts)
@@ -169,6 +186,7 @@ def rank_themes(themes: List[ThemeUnit],
                 stelliums: List = None) -> List[ThemeUnit]:
     """
     Rank themes by significance score and deduplicate overlaps.
+    Special patterns always rank first (group_rank = 0).
     
     Args:
         themes: List of theme units to rank
@@ -176,7 +194,7 @@ def rank_themes(themes: List[ThemeUnit],
         stelliums: List of stelliums for bonus calculation
         
     Returns:
-        Top 5 themes sorted by significance (descending)
+        Top 5 themes sorted by significance (descending), with patterns first
     """
     if angle_contacts is None:
         angle_contacts = []
@@ -189,29 +207,42 @@ def rank_themes(themes: List[ThemeUnit],
         theme.significance = calculate_significance(theme, angle_contacts, stelliums)
         scored_themes.append(theme)
     
-    # Sort by significance (descending)
-    scored_themes.sort(key=lambda t: t.significance, reverse=True)
+    # Separate special patterns from other themes
+    pattern_themes = [t for t in scored_themes if isinstance(t, PatternTheme)]
+    other_themes = [t for t in scored_themes if not isinstance(t, PatternTheme)]
     
-    # Deduplicate overlaps (prefer aspects over stelliums when both exist)
-    deduplicated = []
+    # Sort patterns by significance (descending)
+    pattern_themes.sort(key=lambda t: t.significance, reverse=True)
+    
+    # Sort other themes by significance (descending)
+    other_themes.sort(key=lambda t: t.significance, reverse=True)
+    
+    # Deduplicate overlaps in other themes (prefer aspects over stelliums when both exist)
+    deduplicated_other = []
     used_planets = set()
     
-    for theme in scored_themes:
+    for theme in other_themes:
         if theme.source == 'aspect' and isinstance(theme, AspectTheme):
             # Check if both planets are already used in a stellium
             if theme.a in used_planets and theme.b in used_planets:
                 continue  # Skip this aspect as both planets are in stellium
             used_planets.update([theme.a, theme.b])
-            deduplicated.append(theme)
+            deduplicated_other.append(theme)
         elif theme.source == 'stellium' and isinstance(theme, StelliumTheme):
             # Check if any planets are already used
             if any(p in used_planets for p in theme.planets):
                 continue  # Skip this stellium as planets are already used
             used_planets.update(theme.planets)
-            deduplicated.append(theme)
+            deduplicated_other.append(theme)
         else:
             # Angle contacts and sign blends don't conflict
-            deduplicated.append(theme)
+            deduplicated_other.append(theme)
     
-    # Return top 5
-    return deduplicated[:5]
+    # Combine: patterns first, then other themes
+    # Take up to 5 total, but ensure patterns are always first
+    result = pattern_themes[:5]  # Take all patterns (up to 5)
+    remaining_slots = 5 - len(result)
+    if remaining_slots > 0:
+        result.extend(deduplicated_other[:remaining_slots])
+    
+    return result

@@ -4,6 +4,7 @@ A comprehensive Python-based astrological analysis engine that performs composit
 
 ## Features
 
+- **Special Pattern Detection**: Detects Grand Cross, Grand Trine, T-Square, and Mystic Rectangle patterns with highest priority
 - **Comprehensive Aspect Detection**: Identifies planetary aspects with proper orb rules (5° for Sun/Moon, 3° for others)
 - **Stellium Detection**: Finds clusters of 3+ planets within 8° span
 - **Angle Contact Analysis**: Detects planets near composite angles (AC/DC/MC/IC)
@@ -80,6 +81,13 @@ curl -X POST "http://localhost:8000/top-aspects/composite" \
 ```json
 {
   "placements": {
+    "patterns": [
+      {
+        "pattern_type": "grand_trine",
+        "planets": ["Sun", "Moon", "Mars"],
+        "orb_deg": 0.0
+      }
+    ],
     "stelliums": [
       {
         "sign": "Scorpio",
@@ -115,15 +123,17 @@ curl -X POST "http://localhost:8000/top-aspects/composite" \
     ],
     "selected_themes": [
       {
-        "source": "aspect",
-        "label": "Sun conjunction Mercury",
-        "degrees": "5° Scorpio / 0° Scorpio",
-        "type": "conjunction",
-        "orb_deg": 4.99,
-        "significance": 4.388,
+        "source": "pattern",
+        "label": "Grand Trine (Sun, Moon, Mars)",
+        "degrees": "2.0° orb",
+        "type": "grand_trine",
+        "orb_deg": 2.0,
+        "significance": 3.2,
+        "special_feature": true,
+        "group_rank": 0,
         "payload_ref": {
-          "a": "Sun",
-          "b": "Mercury"
+          "planets": ["Sun", "Moon", "Mars"],
+          "type": "grand_trine"
         }
       }
     ]
@@ -177,40 +187,49 @@ python -m pytest --cov=app --cov-report=html
 
 ## Algorithm Overview
 
-### 1. Aspect Detection
+### 1. Special Pattern Detection (Highest Priority)
+- **Grand Cross**: 4 planets forming two oppositions (180°) and four squares (90°)
+- **Grand Trine**: 3 planets ~120° apart each, forming an equilateral triangle (±5° orb)
+- **T-Square**: An opposition with a third planet squaring both ends (opposition ±5°, squares ±3°)
+- **Mystic Rectangle**: 4 planets forming two oppositions + two trines + two sextiles
+- Special patterns always rank first (group_rank = 0, special_feature = true)
+- **Note**: AI interpretation (themes, emojis, narratives) is handled by the Nest.js backend
+
+### 2. Aspect Detection
 - Calculates angular separation between all planet pairs
 - Applies orb rules: 5° for Sun/Moon, 3° for others
 - Detects conjunction, square, trine, and opposition aspects
 - Handles 0-360° wraparound correctly
 
-### 2. Stellium Detection
+### 3. Stellium Detection
 - Uses sliding window approach to find 3+ planets within 8°
 - Handles 0-360° wraparound for accurate span calculation
 - Determines modal sign for stellium labeling
 - Prevents duplicate stellium detection
 
-### 3. Angle Contact Detection
+### 4. Angle Contact Detection
 - Detects planets within 3° of composite angles (AC/DC/MC/IC)
 - Creates descriptive contact labels
 - Sorts by orb tightness
 
-### 4. Sign Blend Synthesis
+### 5. Sign Blend Synthesis
 - Weights planets (core bodies = 2.0x, others = 1.0x)
 - Identifies two most dominant signs
 - Applies thresholds for meaningful dominance
 - Returns sign themes with keywords
 
-### 5. Significance Scoring
+### 6. Significance Scoring
 - Complex formula: `base × tightness + core_bonus + angle_bonus + stellium_bonus`
-- Base scores: 2.0 (conj/opp), 1.4 (square), 1.2 (trine), 1.8 (stellium), 1.6 (angle)
+- Base scores: 3.0 (grand_cross), 2.8 (grand_trine), 2.6 (t_square), 2.4 (mystic_rectangle), 2.0 (conj/opp), 1.4 (square), 1.2 (trine), 1.8 (stellium), 1.6 (angle)
 - Tightness multiplier: 1.0 + max(0, (orb_limit - orb) / orb_limit)
 - Bonuses: +0.3 (core bodies), +0.2 (angular), +0.2 (stellium)
 
-### 6. Theme Ranking
+### 7. Theme Ranking
+- Special patterns always rank first (group_rank = 0)
 - Ranks by significance score (descending)
 - Deduplicates overlapping themes
 - Returns top 5 themes
-- Priority: conjunction > opposition > stellium > angle > square > trine
+- Priority: special patterns > conjunction > opposition > stellium > angle > square > trine
 
 ## Configuration
 

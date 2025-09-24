@@ -8,9 +8,10 @@ from app.astro.angle_contacts import detect_angle_contacts
 from app.astro.stellium_detection import detect_stelliums
 from app.astro.sign_blend import detect_sign_blend
 from app.astro.significance_scoring import (
-    AspectTheme, StelliumTheme, AngleTheme, SignBlendTheme, 
+    AspectTheme, StelliumTheme, AngleTheme, SignBlendTheme, PatternTheme,
     rank_themes
 )
+from app.astro.pattern_detection import detect_special_patterns
 from app.astro.payload_formatter import format_placements_payload, format_meta_payload
 from app.core.constants import ASPECTS
 
@@ -27,20 +28,32 @@ def analyze_composite(composite_planets: Dict[str, float],
     Returns:
         Complete analysis result with placements and meta
     """
-    # 1. Detect aspects
+    # 1. Detect special patterns first (highest priority)
+    special_patterns = detect_special_patterns(composite_planets)
+    
+    # 2. Detect aspects
     aspects = detect_aspects(composite_planets)
     
-    # 2. Detect angle contacts
+    # 3. Detect angle contacts
     angle_contacts = detect_angle_contacts(composite_planets, composite_angles) if composite_angles else []
     
-    # 3. Detect stelliums
+    # 4. Detect stelliums
     stelliums = detect_stelliums(composite_planets)
     
-    # 4. Detect sign blend themes
+    # 5. Detect sign blend themes
     sign_themes = detect_sign_blend(composite_planets)
     
-    # 5. Convert to theme units for scoring
+    # 6. Convert to theme units for scoring
     theme_units = []
+    
+    # Convert special patterns to theme units (highest priority)
+    for pattern in special_patterns:
+        theme_units.append(PatternTheme(
+            source="pattern",
+            type=pattern.pattern_type,
+            orb_deg=pattern.orb_deg,
+            planets=pattern.planets
+        ))
     
     # Convert aspects to theme units
     for aspect in aspects:
@@ -89,12 +102,12 @@ def analyze_composite(composite_planets: Dict[str, float],
             keywords=theme.keywords
         ))
     
-    # 6. Rank themes by significance
+    # 7. Rank themes by significance
     selected_themes = rank_themes(theme_units, angle_contacts, stelliums)
     
-    # 7. Format payload
+    # 8. Format payload
     placements = format_placements_payload(
-        aspects, angle_contacts, stelliums, sign_themes, selected_themes, composite_planets
+        aspects, angle_contacts, stelliums, sign_themes, selected_themes, composite_planets, special_patterns
     )
     
     meta = format_meta_payload()
